@@ -326,9 +326,9 @@ with tab5:
 
 
 # ================================
-# Pestaña 7: Optimización  NPEB de Portafolio
+# Pestaña 6: Optimización  NPEB de Portafolio
 # ================================
-with tab7:
+with tab6:
     st.markdown("## 🧠 Portafolio Óptimo Bayesiano (NPEB)")
     st.markdown(r"""
     ### 📚 Modelo de Optimización Bayesiana
@@ -577,13 +577,13 @@ with tab7:
 
 
 # ================================
-# Pestaña 6: Optimización Portafolios Extras
+# Pestaña 7: Optimización Portafolios Extras
 #   - Portafolio Bayesiano Tradicional (prior definido por el usuario)
 #   - Portafolio Risk Parity
 #   - Portafolio Sharpe (Máximo Ratio)
 #   - Portafolio MinVar (Mínima Varianza)
 # ================================
-with tab6:
+with tab7:
     st.markdown("## 🧮 Optimización Portafolios 2025: Modelos Interactivos 🧮")
     st.markdown("""
     **Contexto:**
