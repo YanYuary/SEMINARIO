@@ -19,7 +19,7 @@ st.set_page_config(
     page_title="🔥 Dashboard Acero-Aranceles 2025 👽",
     layout="wide",
     initial_sidebar_state="expanded",
-    page_icon="📈"
+    page_icon="🛸"
 )
 
 # ================================
