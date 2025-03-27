@@ -1,0 +1,11 @@
+streamlit
+pandas
+altair
+gspread
+numpy
+matplotlib
+yfinance
+plotly
+cvxpy
+scikit-learn
+statsmodels
