@@ -12,7 +12,7 @@ from statsmodels.tsa.arima.model import ARIMA
 import plotly.express as px
 import plotly.figure_factory as ff
 
-# ================================, 
+# ================================,
 # Configuración inicial de la App
 # ================================
 st.set_page_config(
@@ -46,6 +46,13 @@ with st.sidebar:
         options=list(tickers.keys()),
         default=list(tickers.keys())
     )
+
+    if len(selected_companies) == 0:
+        st.error("⚠️ Por favor, selecciona al menos una acción para continuar ⚠️")
+        st.stop()
+
+
+
 
 # Descargar datos históricos
 @st.cache_data
@@ -94,8 +101,8 @@ tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "💵 Cambio Absoluto",
     "📊 Distribución Retornos",
     "🧮 Estadísticas",
-    "💼 Cartera 2025",
-    "💰 Extras",
+    "💼 Carteras 2025",
+    "💰 Cartera Extra",
     "🧠 Pronóstico",
     "📅 Notas"
 
@@ -319,9 +326,9 @@ with tab5:
 
 
 # ================================
-# Pestaña 6: Optimización  NPEB de Portafolio
+# Pestaña 7: Optimización  NPEB de Portafolio
 # ================================
-with tab6:
+with tab7:
     st.markdown("## 🧠 Portafolio Óptimo Bayesiano (NPEB)")
     st.markdown(r"""
     ### 📚 Modelo de Optimización Bayesiana
@@ -345,7 +352,11 @@ with tab6:
 
     sujeto a:
     $$\sum_{i} w_i = 1,\quad w_i \geq 0.$$
+
+    **Referencia:**
+    Efron, B. (2013). *Bayesian inference and the parametric bootstrap*. arXiv preprint arXiv:1301.2936. [Disponible en](https://arxiv.org/abs/1301.2936)
     """)
+
 
     # Parámetros para el modelo (λ, B, etc.)
     st.markdown("### ⚙️ Selección de Parámetros del Modelo Bayesiano")
@@ -395,23 +406,32 @@ with tab6:
         )
 
     # 4) Cargar y preparar datos
-    @st.cache_data
-    def prepare_portfolio_data(tickers, start_date, end_date):
+
+    # Quita o comenta el decorador para evitar datos cacheados
+    # @st.cache_data(hash_funcs={list: lambda l: tuple(l)})
+    def prepare_portfolio_data(tickers, selected_companies, start_date, end_date):
         data_prices = yf.download([tickers[e] for e in selected_companies],
                                   start=start_date, end=end_date)["Close"]
         data_prices = data_prices.dropna(axis=0, how="any")
         returns = data_prices.pct_change().dropna()
         return returns
 
+
+
+
     try:
-        returns = prepare_portfolio_data(tickers, port_start, port_end)
+        #returns = prepare_portfolio_data(tickers, port_start, port_end)
+
+        returns = prepare_portfolio_data(tickers, selected_companies, port_start, port_end)
+       # returns = prepare_portfolio_data(tickers, tuple(selected_companies), port_start, port_end)
 
         if returns.empty:
             st.error("❌ No hay suficientes datos para el periodo seleccionado")
             st.stop()
 
         # === 5) Estimación de parámetros (NPEB) ===
-        @st.cache_data
+
+        # @st.cache_data
         def estimate_parameters(_returns, B_samples):
             n, m = _returns.shape
             mu_boot = []
@@ -431,6 +451,13 @@ with tab6:
                 for b in range(B_samples)
             ], axis=0)
             return mu_n, V_n
+
+
+
+
+
+
+
 
         mu_n, V_n = estimate_parameters(returns, B)
         m = len(mu_n)
@@ -549,46 +576,47 @@ with tab6:
 
 
 
-
 # ================================
-# Pestaña 7: Optimización Portafolios Extras
+# Pestaña 6: Optimización Portafolios Extras
 #   - Portafolio Bayesiano Tradicional (prior definido por el usuario)
 #   - Portafolio Risk Parity
 #   - Portafolio Sharpe (Máximo Ratio)
 #   - Portafolio MinVar (Mínima Varianza)
 # ================================
-with tab7:
-    st.markdown("## 🧮 Optimización Portafolios Extras: Nuevos Modelos Interactivos")
+with tab6:
+    st.markdown("## 🧮 Optimización Portafolios 2025: Modelos Interactivos 🧮")
     st.markdown("""
-    **Contexto:**  
-    En esta pestaña podrás explorar cuatro nuevos modelos de optimización de portafolios. Cada uno te permite ajustar parámetros clave, 
-    incluyendo consideraciones de impacto arancelario.  
-    - **Bayesiano Tradicional:** Ajusta los priors para incorporar expectativas subjetivas (por ejemplo, el impacto de aranceles) y escoge la distribución previa (Normal o T-Student).  
-    - **Risk Parity:** Igualar la contribución al riesgo de cada activo; además, puedes decidir si incluir activos de cobertura como CETES u Oro.  
-    - **Sharpe (Máximo Ratio):** Permite personalizar los retornos esperados (ajustados por aranceles) y elegir entre datos históricos o proyecciones bayesianas.  
+    **Contexto:**
+    En esta pestaña podrás explorar cuatro nuevos modelos de optimización de portafolios. Cada uno te permite ajustar parámetros clave,
+    incluyendo consideraciones de impacto arancelario.
+    - **Bayesiano Tradicional:** Ajusta los priors para incorporar expectativas subjetivas (por ejemplo, el impacto de aranceles) y escoge la distribución previa (Normal o T-Student).
+    - **Risk Parity:** Igualar la contribución al riesgo de cada activo; además, puedes decidir si incluir activos de cobertura como CETES u Oro.
+    - **Sharpe (Máximo Ratio):** Permite personalizar los retornos esperados (ajustados por aranceles) y elegir entre datos históricos o proyecciones bayesianas.
     - **MinVar:** Optimiza para la mínima varianza permitiendo restringir el peso máximo asignado a cada activo y escoger el método de estimación de la matriz de covarianza.
     """)
-    
+
     # ─────────────────────────────────────────────────────────────────────────────
     # Parámetros Generales para Portafolios Extras
     # ─────────────────────────────────────────────────────────────────────────────
     with st.expander("🔧 Parámetros Generales para Portafolios Extras", expanded=True):
         # Modo arancelario global: explica cómo se ajustan retornos y volatilidades.
-        arancel_mode = st.checkbox("Modo Arancelario 🛃", 
+        arancel_mode = st.checkbox("Modo Arancelario 🛃",
                                     help="Si se activa, se reduce el retorno esperado de exportadores (por ejemplo, TX.MX en -15%) y se aumenta la volatilidad de empresas con deuda en USD (por ejemplo, ORBIA.MX +20%).")
         col_gen1, col_gen2 = st.columns(2)
         with col_gen1:
-            port_start_ex = st.date_input("Fecha inicial entrenamiento", 
+            port_start_ex = st.date_input("Fecha inicial entrenamiento",
                                           value=default_start, min_value=min_date, max_value=max_date, key="port_start_ex")
         with col_gen2:
-            port_end_ex = st.date_input("Fecha final entrenamiento", 
+            port_end_ex = st.date_input("Fecha final entrenamiento",
                                         value=default_end, min_value=min_date, max_value=max_date, key="port_end_ex")
         # Se cargan los datos para la optimización en Extras
-        returns_ex = prepare_portfolio_data(tickers, port_start_ex, port_end_ex)
+       # returns_ex = prepare_portfolio_data(tickers, port_start_ex, port_end_ex)
+
+        returns_ex = prepare_portfolio_data(tickers, selected_companies, port_start_ex, port_end_ex)
         if returns_ex.empty:
             st.error("❌ No hay suficientes datos para el periodo seleccionado en Extras")
             st.stop()
-    
+
     # ─────────────────────────────────────────────────────────────────────────────
     # 1. Portafolio Bayesiano Tradicional 🧠
     # ─────────────────────────────────────────────────────────────────────────────
@@ -598,8 +626,8 @@ with tab7:
                               help="Valor mayor penaliza más la volatilidad. Ajusta este parámetro para controlar la aversión al riesgo.")
         st.markdown("#### 📊 Ajuste de Priors (en %)")
         st.markdown("""
-        Los **priors** representan tus expectativas subjetivas sobre los retornos de cada activo.  
-        Por ejemplo, si crees que los aranceles impactarán negativamente a una empresa, puedes ajustar su prior a un valor negativo.  
+        Los **priors** representan tus expectativas subjetivas sobre los retornos de cada activo.
+        Por ejemplo, si crees que los aranceles impactarán negativamente a una empresa, puedes ajustar su prior a un valor negativo.
         *Modifica estos valores según tu análisis o intuición sobre el impacto de aranceles u otros factores.*
         """)
         prior_adjustments = {}
@@ -614,16 +642,16 @@ with tab7:
         st.markdown("#### 📈 Selección de Distribución Previa")
         prior_distribution = st.selectbox("Distribución previa", options=["Normal", "T-Student"],
                                           help="""
-                                          - **Normal:** Asume una distribución simétrica de retornos.  
+                                          - **Normal:** Asume una distribución simétrica de retornos.
                                           - **T-Student:** Permite colas más pesadas, útil en presencia de eventos extremos o incertidumbre elevada.
                                           """)
         st.info("💡 *Consejo:* Ajusta los priors y la distribución según tu percepción del entorno económico y el impacto de aranceles.")
-    
+
     # Cálculos para el portafolio Bayesiano
     mu_sample = returns_ex.mean().values            # Promedio muestral
     Sigma_sample = returns_ex.cov().values            # Matriz de covarianza muestral
     # Ajustar los retornos esperados según los priors (convertidos de % a decimal)
-    mu_adj = np.array([mu_sample[i] + (prior_adjustments[empresa] / 100.0) 
+    mu_adj = np.array([mu_sample[i] + (prior_adjustments[empresa] / 100.0)
                        for i, empresa in enumerate(selected_companies)])
     # Ajuste de la volatilidad: se incrementa según el slider de probabilidad
     vol_factor = 1 + (prob_arancel / 100.0)
@@ -682,10 +710,10 @@ with tab7:
         fig_bayes = go.Figure(data=[
             go.Bar(name="Bayesiano Tradicional", x=selected_companies, y=best_w_bayes * 100, marker_color='purple')
         ])
-        fig_bayes.update_layout(title="Distribución de Pesos - Portafolio Bayesiano", 
+        fig_bayes.update_layout(title="Distribución de Pesos - Portafolio Bayesiano",
                                 yaxis_title="Peso (%)", xaxis_tickangle=-45)
         st.plotly_chart(fig_bayes, use_container_width=True)
-    
+
     # ─────────────────────────────────────────────────────────────────────────────
     # 2. Portafolio Risk Parity ⚖️
     # ─────────────────────────────────────────────────────────────────────────────
@@ -740,10 +768,10 @@ with tab7:
         fig_rp = go.Figure(data=[
             go.Bar(name="Risk Parity", x=selected_companies, y=risk_parity_weights * 100, marker_color='orange')
         ])
-        fig_rp.update_layout(title="Distribución de Pesos - Portafolio Risk Parity", 
+        fig_rp.update_layout(title="Distribución de Pesos - Portafolio Risk Parity",
                              yaxis_title="Peso (%)", xaxis_tickangle=-45)
         st.plotly_chart(fig_rp, use_container_width=True)
-    
+
     # ─────────────────────────────────────────────────────────────────────────────
     # 3. Portafolio Sharpe (Máximo Ratio) 📈
     # ─────────────────────────────────────────────────────────────────────────────
@@ -751,8 +779,8 @@ with tab7:
     with st.expander("Parámetros Portafolio Sharpe", expanded=True):
         st.markdown("#### 📊 Retornos Esperados Personalizados (en %)")
         st.markdown("""
-        Ajusta los retornos esperados para cada activo.  
-        *Modificar estos valores afecta directamente la asignación del portafolio; por ejemplo, si se reducen los retornos de un activo (por aranceles), este podría recibir menor peso.*  
+        Ajusta los retornos esperados para cada activo.
+        *Modificar estos valores afecta directamente la asignación del portafolio; por ejemplo, si se reducen los retornos de un activo (por aranceles), este podría recibir menor peso.*
         """)
         custom_returns = {}
         for empresa in selected_companies:
@@ -823,10 +851,10 @@ with tab7:
         fig_sharpe = go.Figure(data=[
             go.Bar(name="Portafolio Sharpe", x=selected_companies, y=best_w_sharpe * 100, marker_color='green')
         ])
-        fig_sharpe.update_layout(title="Distribución de Pesos - Portafolio Sharpe", 
+        fig_sharpe.update_layout(title="Distribución de Pesos - Portafolio Sharpe",
                                  yaxis_title="Peso (%)", xaxis_tickangle=-45)
         st.plotly_chart(fig_sharpe, use_container_width=True)
-    
+
     # ─────────────────────────────────────────────────────────────────────────────
     # 4. Portafolio MinVar (Mínima Varianza) 🛡️
     # ─────────────────────────────────────────────────────────────────────────────
@@ -873,7 +901,7 @@ with tab7:
         fig_minvar = go.Figure(data=[
             go.Bar(name="MinVar", x=selected_companies, y=w_minvar * 100, marker_color='blue')
         ])
-        fig_minvar.update_layout(title="Distribución de Pesos - Portafolio MinVar", 
+        fig_minvar.update_layout(title="Distribución de Pesos - Portafolio MinVar",
                                  yaxis_title="Peso (%)", xaxis_tickangle=-45)
         st.plotly_chart(fig_minvar, use_container_width=True)
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -886,14 +914,14 @@ with tab7:
 
 with tab8:
     st.markdown("## 🧠 Pronóstico Avanzado - Triple Método Predictivo")
-    
+
     # Selector principal de método
     metodo_pronostico = st.selectbox("🔮 Seleccione Método Predictivo", options=[
         "🎲 Simulación Mejorada de Monte Carlo",
         "🤖 IA - Temporal Fusion Transformer",
         "📉 Modelo Econométrico ARIMA-GARCH"
     ], help="Elija entre métodos cuantitativos modernos para generar pronósticos")
-    
+
     # =========================================================================
     # Sección 1: Simulación Mejorada de Monte Carlo (Modelo Heston)
     # =========================================================================
@@ -908,10 +936,10 @@ with tab8:
                 dias_pronostico = st.slider("Días a pronosticar", 1, 365, 30,
                                             help="Horizonte temporal del pronóstico")
             with col3:
-                fecha_inicio = st.date_input("Fecha inicio datos", 
+                fecha_inicio = st.date_input("Fecha inicio datos",
                                              value=pd.to_datetime("2010-01-04"),
                                              min_value=pd.to_datetime("2010-01-04"))
-            
+
             col4, col5 = st.columns(2)
             with col4:
                 incluir_saltos = st.checkbox("Incluir saltos de volatilidad (Black Swan)",
@@ -920,7 +948,7 @@ with tab8:
                 lambda_jumps = st.slider("Intensidad saltos", 0.0, 1.0, 0.05, 0.01,
                                            disabled=not incluir_saltos,
                                            help="Frecuencia esperada de eventos extremos")
-            
+
             # Control de semilla
             col6, col7 = st.columns(2)
             with col6:
@@ -931,18 +959,18 @@ with tab8:
                 else:
                     import time
                     seed = int(time.time() * 1000) % (2**32 - 1)
-        
+
         # Selección de acción
         accion = st.selectbox("📈 Seleccione acción para pronóstico", options=selected_companies)
-        
+
         # Cargar datos
         data = data_dict[accion]["Close"].loc[pd.to_datetime(fecha_inicio):]
         returns = data.pct_change().dropna()
-        
+
         if len(data) < 30:
             st.error("❌ Datos insuficientes para el período seleccionado")
             st.stop()
-    
+
         # Parámetros del modelo Heston
         S0 = float(data.iloc[-1])
         mu = float(returns.mean() * 252)
@@ -953,29 +981,29 @@ with tab8:
         rho = -0.7     # Correlación entre precio y volatilidad
         T = dias_pronostico / 252
         n_steps = dias_pronostico  # Se asume un paso diario
-    
+
         # Simulación Monte Carlo corregida
         @st.cache_data
         def run_heston_simulation(S0, mu, v0, kappa, theta, sigma_v, rho, T, n_steps, n_sim, lambda_jumps, incluir_saltos, seed):
             dt = T / n_steps
             prices = np.zeros((n_steps+1, n_sim))
             volatilities = np.zeros_like(prices)
-            
+
             prices[0, :] = S0
             volatilities[0, :] = v0
-            
+
             np.random.seed(seed)
             Z1 = np.random.normal(size=(n_steps, n_sim))
             Z2 = rho * Z1 + np.sqrt(1 - rho**2) * np.random.normal(size=(n_steps, n_sim))
-            
+
             for t in range(1, n_steps+1):
                 v_prev = volatilities[t-1, :]
                 sqrt_v_prev = np.sqrt(np.maximum(v_prev, 0)) * np.sqrt(dt)
-                
+
                 # Actualizar volatilidad
                 new_vol = v_prev + kappa*(theta - v_prev)*dt + sigma_v*sqrt_v_prev*Z2[t-1, :]
                 volatilities[t, :] = np.maximum(new_vol, 0)
-                
+
                 # Manejar saltos correctamente
                 if incluir_saltos:
                     jump_counts = np.random.poisson(lambda_jumps * dt, size=n_sim)
@@ -988,24 +1016,24 @@ with tab8:
                         jumps = np.zeros(n_sim)
                 else:
                     jumps = 0
-                
+
                 prices[t, :] = prices[t-1, :] * np.exp(
-                    (mu - 0.5*v_prev)*dt + 
-                    sqrt_v_prev*Z1[t-1, :] + 
+                    (mu - 0.5*v_prev)*dt +
+                    sqrt_v_prev*Z1[t-1, :] +
                     jumps
                 )
-            
+
             return prices, volatilities
-    
+
         prices_sim, vol_sim = run_heston_simulation(S0, mu, v0, kappa, theta, sigma_v, rho, T, n_steps, n_sim, lambda_jumps, incluir_saltos, seed)
-        
+
         # Mostrar semilla usada
         st.info(f"🔑 Semilla utilizada: `{seed}` - *Usa esta semilla para reproducir el escenario*")
-    
+
         # Generar fechas para el pronóstico (excluyendo el último día histórico)
         last_date = data.index[-1]
         forecast_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=dias_pronostico, freq='B')
-    
+
         # -----------------------------------------------------------------------------
         # Gráfica 1: Trayectorias Simuladas con colores aleatorios
         # -----------------------------------------------------------------------------
@@ -1015,7 +1043,7 @@ with tab8:
         full_dates = pd.date_range(start=data.index[-1], periods=len(price_mean), freq='B')
 
         fig_tray = go.Figure()
-        
+
         # 1. Trayectorias simuladas (solo primeras 100 para claridad)
         colors = px.colors.qualitative.Alphabet
         for i in range(min(100, n_sim)):
@@ -1038,7 +1066,7 @@ with tab8:
             name="Trayectoria Inicial",
             hovertemplate="<b>Primera simulación</b><br>%{y:$,.2f}<extra></extra>"
         ))
-        
+
         fig_tray.add_trace(go.Scatter(
             x=forecast_dates,
             y=prices_sim[1:, -1],
@@ -1051,7 +1079,7 @@ with tab8:
         # 3. Media y bandas de percentiles
         lower_bound = np.percentile(prices_sim[1:], 5, axis=1)
         upper_bound = np.percentile(prices_sim[1:], 95, axis=1)
-        
+
         fig_tray.add_trace(go.Scatter(
             x=forecast_dates,
             y=upper_bound,
@@ -1060,7 +1088,7 @@ with tab8:
             showlegend=False,
             hoverinfo='skip'
         ))
-        
+
         fig_tray.add_trace(go.Scatter(
             x=forecast_dates,
             y=lower_bound,
@@ -1071,7 +1099,7 @@ with tab8:
             name="Banda de Confianza (90%)",
             hovertemplate="<b>Rango 5-95%</b><br>%{y:$,.2f}<extra></extra>"
         ))
-        
+
         fig_tray.add_trace(go.Scatter(
             x=forecast_dates,
             y=price_mean[1:],
@@ -1108,7 +1136,7 @@ with tab8:
         )
 
         st.plotly_chart(fig_tray, use_container_width=True)
-        
+
         # -----------------------------------------------------------------------------
         # Sección de Análisis de Riesgo
         # -----------------------------------------------------------------------------
@@ -1119,13 +1147,13 @@ with tab8:
         CVaR_95 = final_prices[final_prices <= VaR_95].mean()
         max_loss = (VaR_95 - S0)/S0
         prob_ganancia = (final_prices > S0).mean()
-        
+
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("Value at Risk (95%)", f"${VaR_95:,.2f}", 
+            st.metric("Value at Risk (95%)", f"${VaR_95:,.2f}",
                      help="Pérdida máxima esperada en el peor 5% de casos")
         with col2:
-            st.metric("Expected Shortfall", f"${CVaR_95:,.2f}", 
+            st.metric("Expected Shortfall", f"${CVaR_95:,.2f}",
                      help="Pérdida promedio en el peor 5% de escenarios")
         with col3:
             st.metric("Probabilidad de Ganancia", f"{prob_ganancia:.1%}",
@@ -1133,18 +1161,18 @@ with tab8:
 
         # Gráfico de distribución de precios finales (CORREGIDO)
         fig_dist = ff.create_distplot(
-            hist_data=[final_prices], 
-            group_labels=['Distribución Precios'], 
+            hist_data=[final_prices],
+            group_labels=['Distribución Precios'],
             show_hist=True,  # Cambiado a True para mejor visualización
             show_rug=False,
             bin_size=0.5*(final_prices.max() - final_prices.min())/100  # Autoajuste de bins
         )
 
         fig_dist.add_vline(
-            x=S0, 
-            line_dash="dash", 
-            line_color="green", 
-            annotation_text="Precio Actual", 
+            x=S0,
+            line_dash="dash",
+            line_color="green",
+            annotation_text="Precio Actual",
             annotation_position="top right"
         )
 
@@ -1157,7 +1185,7 @@ with tab8:
         st.plotly_chart(fig_dist, use_container_width=True)
 
 
-        
+
         # -----------------------------------------------------------------------------
         # Simulador financiero para el modelo Heston
         # Se utiliza el promedio de las trayectorias (price_mean) como precio pronosticado
@@ -1207,19 +1235,19 @@ with tab8:
                 learning_rate = st.selectbox("Learning Rate", [1e-4, 3e-4, 1e-3], index=1,
                                              help="Tasa de aprendizaje que determina el tamaño de los pasos en la optimización (hiperparámetro)")
                 st.markdown("#### Comentario:")
-                st.markdown("Los hiperparámetros, como batch size y learning rate, influyen en cómo aprende el modelo. Un batch size mayor puede ayudar a estabilizar el entrenamiento, mientras que un learning rate adecuado es clave para lograr una buena convergencia.")
-                
+                st.markdown("ESTE MODELO ESTA PENDIENTE DE TERMINAR DE IMPLEMENTAR. Los hiperparámetros, como batch size y learning rate, influyen en cómo aprende el modelo. Un batch size mayor puede ayudar a estabilizar el entrenamiento, mientras que un learning rate adecuado es clave para lograr una buena convergencia.")
+
         # Selección de acción
         accion = st.selectbox("📈 Seleccione acción para pronóstico", options=selected_companies)
-        
+
         # Cargar datos
         data = data_dict[accion]["Close"]
         returns = data.pct_change().dropna()
-        
+
         # Preprocesamiento: división en datos de entrenamiento y prueba
         train_data = data.iloc[:-30]
         test_data = data.iloc[-30:]
-        
+
         # Entrenamiento simulado (Placeholder: en producción se usaría PyTorch/TensorFlow)
         @st.cache_resource
         def train_tft_model(_data, window_size, epochs, batch_size):
@@ -1231,34 +1259,34 @@ with tab8:
                     noise = np.random.normal(0, data.std() * 0.1, 30)
                     return trend + noise
             return FakeModel()
-        
+
         model = train_tft_model(train_data, ventana, epochs, batch_size)
         pronostico = model.predict(train_data.iloc[-ventana:])
-        
+
         # Generar fechas para el pronóstico
         last_date = data.index[-1]
         forecast_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=30, freq='B')
-        
+
         # Visualización del pronóstico TFT
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=data.index, y=data, name="Histórico", line=dict(color='#1f77b4')))
         fig.add_trace(go.Scatter(x=forecast_dates, y=pronostico, name="Pronóstico TFT", line=dict(color='#2ca02c', dash='dot')))
         fig.update_layout(title=f"Pronóstico TFT para {accion}", xaxis_title="Fecha", yaxis_title="Precio (MXN)")
         st.plotly_chart(fig, use_container_width=True)
-    
+
     # =========================================================================
     # Sección 3: Modelo Econométrico ARIMA-GARCH
     # =========================================================================
     else:
-        st.markdown("### 📉 Modelo Econométrico ARIMA-GARCH")
-        
+        st.markdown("### 📉 Modelo Econométrico ARIMA-GARCH (PENDIENTE DE TERMINAR DE IMPLEMENTAR)")
+
         # Selección de acción
         accion = st.selectbox("📈 Seleccione acción para pronóstico", options=selected_companies)
-        
+
         # Cargar datos
         data = data_dict[accion]["Close"]
         returns = data.pct_change().dropna()
-        
+
         st.markdown("#### 🧮 Análisis Estadístico Previo")
         # Prueba de Dickey-Fuller: evalúa la estacionariedad de la serie.
         adf_result = adfuller(data)
@@ -1273,9 +1301,9 @@ with tab8:
         else:
             st.success("✅ La serie es estacionaria. No se requiere diferenciación.")
             data_diff = data
-        
+
         st.markdown("**Comentario:** La prueba ADF (Augmented Dickey-Fuller) determina si la serie tiene una raíz unitaria. Un valor p mayor a 0.05 indica que la serie no es estacionaria.")
-        
+
         # Graficar ACF y PACF en dos gráficas pequeñas, una al lado de la otra
         fig_acf, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,4))
         from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
@@ -1284,7 +1312,7 @@ with tab8:
         plot_pacf(data_diff, ax=ax2, lags=20, method='ywm')
         ax2.set_title("PACF")
         st.pyplot(fig_acf)
-        
+
         # Selección automática del modelo basado en AIC
         st.markdown("#### Selección Automática del Modelo")
         best_aic = np.inf
@@ -1302,7 +1330,7 @@ with tab8:
                         continue
         st.write(f"Se ha seleccionado automáticamente el modelo ARIMA{best_order} con el menor AIC: {best_aic:.2f}.")
         st.markdown("**Nota:** El modelo óptimo se ha elegido automáticamente en función del AIC. Si lo deseas, puedes modificar manualmente los parámetros.")
-        
+
         # Parámetros del modelo: opción manual
         with st.expander("⚙️ Configuración del Modelo (opcional)", expanded=True):
             col1, col2, col3 = st.columns(3)
@@ -1312,19 +1340,19 @@ with tab8:
                 d = st.number_input("Orden de Diferenciación (d)", min_value=0, max_value=2, value=best_order[1])
             with col3:
                 q = st.number_input("Orden MA (q)", min_value=0, max_value=5, value=best_order[2])
-        
+
         # Entrenamiento del modelo econométrico
         @st.cache_resource
         def train_econometric_model(_data, order):
             model = ARIMA(_data, order=order)
             return model.fit()
-        
+
         model = train_econometric_model(data, (p, d, q))
-        
+
         # Pronóstico
         forecast_steps = st.slider("Días a pronosticar", 1, 365, 30)
         forecast = model.forecast(steps=forecast_steps)
-        
+
         # Visualización del pronóstico
         fig_forecast_econ = go.Figure()
         fig_forecast_econ.add_trace(go.Scatter(x=data.index, y=data, name="Histórico", line=dict(color='#1f77b4')))
@@ -1332,7 +1360,7 @@ with tab8:
         fig_forecast_econ.add_trace(go.Scatter(x=forecast_index, y=forecast, name="Pronóstico", line=dict(color='#9467bd', dash='dot')))
         fig_forecast_econ.update_layout(title=f"Pronóstico ARIMA-GARCH para {accion}", xaxis_title="Fecha", yaxis_title="Precio (MXN)")
         st.plotly_chart(fig_forecast_econ, use_container_width=True)
-        
+
         st.markdown("#### 📊 Resultados del Modelo")
         st.write(model.summary())
 
@@ -1347,26 +1375,26 @@ with tab9:
     ## 🔍 **Análisis Detallado del Código** 🔍
 
     ### 🧮 1. Correctitud Matemática
-    **📊 Portafolio NPEB (Pestaña 6):**  
-    - ✅ **Acierto:** Implementación correcta de μₙ y Vₙ con bootstrap  
-    - ✅ **Acierto:** Restricciones `sum(w)=1` y `w≥0` bien aplicadas  
-    - ⚠️ **Mejora:** Incorporar tasa libre de riesgo en cálculo de Sharpe ratio  
+    **📊 Portafolio NPEB (Pestaña 6):**
+    - ✅ **Acierto:** Implementación correcta de μₙ y Vₙ con bootstrap
+    - ✅ **Acierto:** Restricciones `sum(w)=1` y `w≥0` bien aplicadas
+    - ⚠️ **Mejora:** Incorporar tasa libre de riesgo en cálculo de Sharpe ratio
 
-    **🎲 Modelo Heston (Pestaña 8):**  
-    - ✅ **Acierto:** Ecuaciones diferenciales estocásticas bien implementadas  
-    - ⚠️ **Advertencia:** `np.maximum` para volatilidad podría causar inestabilidad numérica  
+    **🎲 Modelo Heston (Pestaña 8):**
+    - ✅ **Acierto:** Ecuaciones diferenciales estocásticas bien implementadas
+    - ⚠️ **Advertencia:** `np.maximum` para volatilidad podría causar inestabilidad numérica
 
-    **📉 ARIMA-GARCH:**  
-    - ❌ **Error:** Falta componente GARCH completo  
-    - ✅ **Acierto:** Prueba ADF y diferenciación aplicadas correctamente  
+    **📉 ARIMA-GARCH:**
+    - ❌ **Error:** Falta componente GARCH completo
+    - ✅ **Acierto:** Prueba ADF y diferenciación aplicadas correctamente
 
     ---
 
     ### 👨💻 2. Buenas Prácticas de Programación
-    - ✅ **Excelente:** Uso eficiente de `@st.cache_data` para caching  
-    - ✅ **Modular:** Funciones bien estructuradas y reutilizables  
-    - 🔄 **Oportunidad:** Eliminar duplicados en carga de datos  
-    - ✅ **Robusto:** Manejo de errores con `try/except` en secciones críticas  
+    - ✅ **Excelente:** Uso eficiente de `@st.cache_data` para caching
+    - ✅ **Modular:** Funciones bien estructuradas y reutilizables
+    - 🔄 **Oportunidad:** Eliminar duplicados en carga de datos
+    - ✅ **Robusto:** Manejo de errores con `try/except` en secciones críticas
 
 
     """)
