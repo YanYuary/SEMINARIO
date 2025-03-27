@@ -12,14 +12,14 @@ from statsmodels.tsa.arima.model import ARIMA
 import plotly.express as px
 import plotly.figure_factory as ff
 
-# ================================
+# ================================, 
 # Configuración inicial de la App
 # ================================
 st.set_page_config(
     page_title="🔥 Dashboard Acero-Aranceles 2025",
     layout="wide",
     initial_sidebar_state="expanded",
-    page_icon="⚔️"
+    page_icon="👽"
 )
 
 # ================================
