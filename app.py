@@ -16,10 +16,10 @@ import plotly.figure_factory as ff
 # Configuración inicial de la App
 # ================================
 st.set_page_config(
-    page_title="🔥 Dashboard Acero-Aranceles 2025",
+    page_title="🔥 Dashboard Acero-Aranceles 2025 👽",
     layout="wide",
     initial_sidebar_state="expanded",
-    page_icon="👽"
+    page_icon="📈"
 )
 
 # ================================
